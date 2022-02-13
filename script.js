@@ -1,140 +1,98 @@
-//Book class: represents a book
-class Book {
-    constructor(title, author, isbn) {
-        this.title = title;
-        this.author = author;
-        this.isbn = isbn;
-    }
-}
+(function () {
+  let lastId = 0;
+  const showList = document.getElementById('show_list');
+  const btnSave = document.getElementById('save');
+  let removeData;
+  let dataList;
 
-
-// ui class: handle ui tasks
-class UI {
-    static displayBooks() {
-        
-        const books = Store.getBooks();
-
-        books.forEach((book) => UI.addBookToList(book));
-    }
-
-    static addBookToList(book) {
-        const list = document.querySelector('#book-list');
-
-        const row = document.createElement('tr');
-
-        row.innerHTML = `
-            <td>${book.title}</td>
-            <td><p>by</p></td>
-            <td>${book.author}</td>
-            <td>${book.isbn}</td>
-            <td><a href="#" class="btn btn-danger btn-sm delete">X</a></td>
-        `;
-        list.appendChild(row);
-    }
-
-    static deleteBook(el) {
-        if (el.classList.contains('delete')) {
-            el.parentElement.parentElement.remove();
-        }
-    }
-
-    static showAlert(message, className) {
-        const div = document.createElement('div');
-        div.className = `alert alert-${className}`;
-        div.appendChild(document.createTextNode(message));
-        const container = document.querySelector('.container');
-        const form = document.querySelector('#book-form');
-        container.insertBefore(div, form);
-
-        //vanish in 3 seconds
-        setTimeout(() => document.querySelector('.alert').remove(), 1500 );
-    }
-
-    static clearFields() {
-        document.querySelector('#title').value = '';
-        document.querySelector('#author').value = '';
-        document.querySelector('#isbn').value = '';
-    }
-}
-
-//store class: handle storage
-class Store {
-    static getBooks() {
-        let books;
-        if(localStorage.getItem('books') === null) {
-            books = [];
-        }
-        else {
-            books = JSON.parse(localStorage.getItem('books'));
-        }
-        return books;
-    }
-
-    static addBook(book) {
-        const books = Store.getBooks();
-        books.push(book);
-        localStorage.setItem('books', JSON.stringify(books));
-    }
-
-    static removeBook(isbn) {
-        const books = Store.getBooks();
-
-        books.forEach((book, index) => {
-            if(book.isbn === isbn){
-                books.splice(index, 1);
-            }
-        });
-
-        localStorage.setItem('books', JSON.stringify(books));
-    }
-}
-
-
-//event: display books
-document.addEventListener('DOMContentLoaded', UI.displayBooks);
-
-
-//event: add a book
-document.querySelector('#book-form').addEventListener('submit', (e) => {
-    //prevent actual submit
-    e.preventDefault();
-
-    //get form values
-    const title = document.querySelector('#title').value;
-    const author = document.querySelector('#author').value;
-    const isbn = document.querySelector('#isbn').value;
-
-    //validate
-    if (title === '' || author === '' || isbn === '') {
-        UI.showAlert('please fill in all fields', 'danger');
+  function init() {
+    if (window.localStorage.getItem('dataList')) {
+      dataList = JSON.parse(window.localStorage.getItem('dataList'));
     } else {
-        //instantiate book
-        const book = new Book(title, author, isbn);
-
-        console.log(book);
-
-        //add book to ui
-        UI.addBookToList(book);
-
-        //add book to store
-        Store.addBook(book);
-
-        //show success message
-        UI.showAlert('Book Added', 'success')
-
-        //clear fields
-        UI.clearFields();
+      dataList = [];
     }
-})
+    btnSave.addEventListener('click', saveData);
+    showData();
+  }
 
-//event: remove a book
-document.querySelector('#book-list').addEventListener('click', (e) => {
-    //remove book from ui
-    UI.deleteBook(e.target);
-    
-    //remove book from store
-    Store.removeBook(e.target.parentElement.previousElementSibling.textContent);
+  function showData() {
+    if (dataList.length) {
+      getLastTaskId();
+      for (const item in dataList) {
+        const data = dataList[item];
+        addDataToList(data);
+      }
+      syncEvents();
+    }
+  }
 
-    //show success message
-    UI.showAlert('Book Removed', 'primary')
-})
+  function saveData() {
+    const data = {
+      dataId: lastId,
+      dataTitle: document.getElementById('title').value,
+      dataAuthor: document.getElementById('author').value,
+    };
+    dataList.push(data);
+    syncTask();
+    addDataToList(data);
+    syncEvents();
+    lastId++;
+  }
+
+  function addDataToList(data) {
+    const removeData = document.createElement('span');
+    const element = document.createElement('li');
+    const line = document.createElement('div');
+    const alert = document.createElement('div');
+
+    element.setAttribute('id', data.dataId);
+    if (data.dataTitle !== '' && data.dataAuthor !== '') {
+      element.innerHTML += `${data.dataTitle}<br>${data.dataAuthor}<br> `;
+
+      removeData.innerHTML = '<button>Remove</button>';
+      removeData.className = 'remove_data';
+      removeData.setAttribute('title', 'Remove');
+
+      line.innerHTML = '<div class="line"></div>';
+
+      element.appendChild(removeData);
+      showList.appendChild(element);
+      element.appendChild(line);
+    }
+  }
+
+  function removeDta(event) {
+    const dataToRemove = event.currentTarget.parentNode;
+    console.log('data to remove', dataToRemove);
+    const dataId = dataToRemove.id;
+    console.log('data to remove id', dataToRemove.id);
+    showList.removeChild(dataToRemove);
+    dataList.forEach((value, i) => {
+      if (value.dataId == dataId) {
+        dataList.splice(i, 1);
+      }
+    });
+    syncTask();
+  }
+
+  function syncTask() {
+    window.localStorage.setItem('dataList', JSON.stringify(dataList));
+    dataList = JSON.parse(window.localStorage.getItem('dataList'));
+  }
+
+  function getLastTaskId() {
+    const lastTask = dataList[dataList.length - 1];
+    lastId = lastTask.dataId + 1;
+  }
+
+  function syncEvents() {
+    removeData = document.getElementsByClassName('remove_data');
+    if (removeData.length) {
+      for (let i = 0; i < removeData.length; i++) {
+        removeData[i].addEventListener('click', removeDta);
+      }
+    }
+  }
+
+  init();
+}());
